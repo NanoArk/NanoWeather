@@ -1,0 +1,13 @@
+com\nanoark\dao\TemplateFieldDAO.class
+META-INF\MANIFEST.MF
+com\nanoark\utilities\Log.class
+com\nanoark\utilities\FileActions.class
+META-INF\maven\com.nanoark\NanoWeather\pom.properties
+com\nanoark\NanoWeather.class
+com\nanoark\utilities\Log$LogFile.class
+com\nanoark\utilities\TesseractJava.class
+META-INF\maven\com.nanoark\NanoWeather\pom.xml
+com\nanoark\utilities\MongoDB.class
+com\nanoark\dao\ImageDAO.class
+com\nanoark\dao\TemplateDAO.class
+com\nanoark\dao\ImageFieldDAO.class
