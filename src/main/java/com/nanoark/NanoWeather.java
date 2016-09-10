@@ -1,16 +1,13 @@
 package com.nanoark;
 
 import java.io.IOException;
-import java.nio.file.DirectoryNotEmptyException;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
 import java.util.logging.Logger;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 
+import com.nanoark.dao.DefaultsDAO;
 import com.nanoark.dao.ImageDAO;
 import com.nanoark.dao.ImageFieldDAO;
 import com.nanoark.dao.TemplateDAO;
@@ -18,12 +15,13 @@ import com.nanoark.dao.TemplateFieldDAO;
 import com.nanoark.utilities.Log;
 
 /**
- * HTML interface for Java programs using the NanoWeather plug-in.
+ * HTML interface for the NanoWeather plug-in software.
  *
  * @author Vino Sugunan
  */
 @Path("/NanoWeather")
 public class NanoWeather {
+   /** Description. */
    private static Logger log = Log.logger();
 
    /**
@@ -31,16 +29,16 @@ public class NanoWeather {
     *
     * @param image specifies an identifier for this image.
     * @param location specify the exact file location of this image.
-    * @param height image height in pixels.
-    * @param width image width in pixels.
     * @return A brief string describing the image which was added.
+    * @throws Exception displays details of fatal error.
     */
    @GET
-   @Path("/addImage/{image}/{location: .*}/{height}/{width}")
-   public static String addImage(@PathParam("image") String image, @PathParam("location") String location,
-      @PathParam("height") int height, @PathParam("width") int width) {
+   @Path("/addImage/{image}/{location: .*}")
+   public static String addImage(@PathParam("image") String image, @PathParam("location") String location)
+      throws Exception {
       log.info("Adding image: " + image);
-      return ImageDAO.insert(image, location, height, width);
+      ImageDAO.insert(image, location);
+      return "Added " + image + " from " + location;
    }
 
    /**
@@ -55,15 +53,134 @@ public class NanoWeather {
     * @param highThresh confidence above which this field is considered high accuracy.
     * @param lowThresh confidence below which this field is considered low accuracy.
     * @return A brief string describing the field which was added.
+    * @throws IOException
     */
    @GET
    @Path("/addImageField/{image}/{field}/{x}/{y}/{height}/{width}/{highThresh}/{lowThresh}")
    public static String addImageField(@PathParam("image") String image, @PathParam("field") String field,
       @PathParam("x") int x, @PathParam("y") int y, @PathParam("height") int height, @PathParam("width") int width,
-      @PathParam("highThresh") int highThresh, @PathParam("lowThresh") int lowThresh) {
+      @PathParam("highThresh") int highThresh, @PathParam("lowThresh") int lowThresh) throws IOException {
       ImageFieldDAO.insert(image, field, x, y, height, width, highThresh, lowThresh);
       return "Added " + height + "x" + width + " field: " + field + " to image: " + image + " at (" + x + "," + y
          + ") with a high threshhold of " + highThresh + " and a low threshhold of " + lowThresh;
+   }
+
+   /**
+    * Adds a field to an image within NanoWeather.
+    *
+    * @param image identifies the image this field exists within.
+    * @param field specifies an identifier for this field within this image.
+    * @param x the distance in pixels of this field from the left edge.
+    * @param y the distance in pixels of this field from the top edge.
+    * @param height field height in pixels.
+    * @param width field width in pixels.
+    * @param highThresh confidence above which this field is considered high accuracy.
+    * @param lowThresh confidence below which this field is considered low accuracy.
+    * @return A brief string describing the field which was added.
+    * @throws IOException
+    */
+   @GET
+   @Path("/addImageField/{image}/{field}/{x}/{y}/{height}/{width}")
+   public static String addImageField(@PathParam("image") String image, @PathParam("field") String field,
+      @PathParam("x") int x, @PathParam("y") int y, @PathParam("height") int height, @PathParam("width") int width)
+         throws IOException {
+      int highThresh = Integer.parseInt(DefaultsDAO.get("imageFieldHighThresh"));
+      int lowThresh = Integer.parseInt(DefaultsDAO.get("imageFieldLowThresh"));
+      ImageFieldDAO.insert(image, field, x, y, height, width, highThresh, lowThresh);
+      return "Added " + height + "x" + width + " field: " + field + " to image: " + image + " at (" + x + "," + y + ")";
+   }
+
+   /**
+    * Adds semicolon delimited fields to an image within NanoWeather.
+    *
+    * @param image identifies the image this field exists within.
+    * @param field specifies identifiers for these fields within this image.
+    * @param x the distances in pixels of these fields from the left edge.
+    * @param y the distances in pixels of these fields from the top edge.
+    * @param height field heights in pixels.
+    * @param width field widths in pixels.
+    * @param highThresh confidence above which this field is considered high accuracy.
+    * @param lowThresh confidence below which this field is considered low accuracy.
+    * @return A brief string describing the fields which were added.
+    * @throws Exception
+    */
+   @GET
+   @Path("/addImageFields/{image}/{field}/{x}/{y}/{height}/{width}/{highThresh}/{lowThresh}")
+   public static String addImageFields(@PathParam("image") String image, @PathParam("field") String field,
+      @PathParam("x") String x, @PathParam("y") String y, @PathParam("height") String height,
+      @PathParam("width") String width, @PathParam("highThresh") int highThresh, @PathParam("lowThresh") int lowThresh)
+         throws Exception {
+      String result = "";
+      String[] fields = field.split("~");
+      String[] xs = x.split("~");
+      String[] ys = y.split("~");
+      String[] heights = height.split("~");
+      String[] widths = width.split("~");
+      if(fields.length != xs.length) {
+         throw new Exception("Wrong number of x inputs:\n" + fields + "\n" + xs);
+      } else if(fields.length != ys.length) {
+         throw new Exception("Wrong number of y inputs:\n" + fields + "\n" + ys);
+      } else if(fields.length != heights.length) {
+         throw new Exception("Wrong number of height inputs:\n" + fields + "\n" + heights);
+      } else if(fields.length != widths.length) {
+         throw new Exception("Wrong number of width inputs:\n" + fields + "\n" + widths);
+      } else {
+         for (int i = 0; i < fields.length; i++ ) {
+            ImageFieldDAO.insert(image, fields[i], Integer.valueOf(xs[i]), Integer.valueOf(ys[i]),
+               Integer.valueOf(heights[i]), Integer.valueOf(widths[i]), highThresh, lowThresh);
+            result += "<p>Attempting to add fields to image:</p>" + image + "<p>field:\t" + fields[i] + "</p><p>x:\t"
+               + xs[i] + "</p><p>y:\t" + ys[i] + "</p><p>height:\t" + heights[i] + "</p><p>width:\t" + widths[i]
+               + "</p>";
+         }
+      }
+      return result;
+   }
+
+   /**
+    * Adds semicolon delimited fields to an image within NanoWeather.
+    *
+    * @param image identifies the image this field exists within.
+    * @param field specifies identifiers for these fields within this image.
+    * @param x the distances in pixels of these fields from the left edge.
+    * @param y the distances in pixels of these fields from the top edge.
+    * @param height field heights in pixels.
+    * @param width field widths in pixels.
+    * @param highThresh confidence above which this field is considered high accuracy.
+    * @param lowThresh confidence below which this field is considered low accuracy.
+    * @return A brief string describing the fields which were added.
+    * @throws Exception
+    */
+   @GET
+   @Path("/addImageFields/{image}/{field}/{x}/{y}/{height}/{width}")
+   public static String addImageFields(@PathParam("image") String image, @PathParam("field") String field,
+      @PathParam("x") String x, @PathParam("y") String y, @PathParam("height") String height,
+      @PathParam("width") String width) throws Exception {
+      String result = "";
+      String[] fields = field.split("~");
+      String[] xs = x.split("~");
+      String[] ys = y.split("~");
+      String[] heights = height.split("~");
+      String[] widths = width.split("~");
+      int highThresh = Integer.parseInt(DefaultsDAO.get("imageFieldHighThresh"));
+      int lowThresh = Integer.parseInt(DefaultsDAO.get("imageFieldLowThresh"));
+      if(fields.length != xs.length) {
+         throw new Exception("Wrong number of x inputs:\n" + fields + "\n" + xs);
+      } else if(fields.length != ys.length) {
+         throw new Exception("Wrong number of y inputs:\n" + fields + "\n" + ys);
+      } else if(fields.length != heights.length) {
+         throw new Exception("Wrong number of height inputs:\n" + fields + "\n" + heights);
+      } else if(fields.length != widths.length) {
+         throw new Exception("Wrong number of width inputs:\n" + fields + "\n" + widths);
+      } else {
+         for (int i = 0; i < fields.length; i++ ) {
+            ImageFieldDAO.insert(image, fields[i], Integer.valueOf(xs[i]), Integer.valueOf(ys[i]),
+               Integer.valueOf(heights[i]), Integer.valueOf(widths[i]), highThresh, lowThresh);
+            result += "<p>Attempting to add fields to image:</p>" + image + "<p>field:\t" + fields[i] + "</p><p>x:\t"
+               + xs[i] + "</p><p>y:\t" + ys[i] + "</p><p>height:\t" + heights[i] + "</p><p>width:\t" + widths[i]
+               + "</p>";
+         }
+      }
+      return result;
    }
 
    /**
@@ -503,13 +620,39 @@ public class NanoWeather {
    }
 
    /**
+    * Returns percentage of fields within an image which have been OCRed.
+    *
+    * @param image identifies the image to check OCRed percentage for.
+    * @return a percent complete for this field.
+    */
+   @GET
+   @Path("isImageOCRed/{image}")
+   public static String isImageOCRed(@PathParam("image") String image) {
+      return ImageFieldDAO.isOCRed(image);
+   }
+
+   /**
+    * Returns 0% if this field has been OCRed and 100% if it has not.
+    *
+    * @param image identifies the image this field is contained in.
+    * @param field identifies the field within the specified image to check.
+    * @return a percent (either 0 or 100) complete for the OCR job on this field.
+    */
+   @GET
+   @Path("isImageFieldOCRed/{image}/{field}")
+   public static String isImageFieldOCRed(@PathParam("image") String image, @PathParam("field") String field) {
+      return ImageFieldDAO.isOCRed(image, field);
+   }
+
+   /**
     * Updates the location of an image.
     *
     * @param image identifies the image to update.
     * @param location new filepath for this image.
+    * @return
     */
    @GET
-   @Path("/addImage/{image}/{location: .*}")
+   @Path("/setImageLocation/{image}/{location: .*}")
    public static String setImageLocation(@PathParam("image") String image, @PathParam("location") String location) {
       ImageDAO.setVal(image, "location", location);
       return "Set location of: " + image + " to " + location;
@@ -520,6 +663,7 @@ public class NanoWeather {
     *
     * @param image identifies the image to update.
     * @param height new height in pixels of this image.
+    * @return
     */
    @GET
    @Path("setImageHeight/{image}/{height}")
@@ -528,8 +672,17 @@ public class NanoWeather {
       return "Set height of: " + image + " to " + height;
    }
 
-   public static void setImageWidth(String image, int width) {
+   /**
+    * Updates the width of an image.
+    *
+    * @param image identifies the image to update.
+    * @param width new width in pixels of this image.
+    */
+   @GET
+   @Path("setImageWidth/{image}/{width}")
+   public static String setImageWidth(@PathParam("image") String image, @PathParam("width") int width) {
       ImageDAO.setVal(image, "width", width + "");
+      return "Set width of: " + image + " to " + width;
    }
 
    public static void setImageFieldX(String image, String field, int x) {
@@ -605,8 +758,11 @@ public class NanoWeather {
     *
     * @param image specifies the identifier of this image.
     */
-   public static void removeImage(String image) {
+   @GET
+   @Path("/removeImage/{image}")
+   public static String removeImage(@PathParam("image") String image) {
       ImageDAO.remove(image);
+      return "removed image" + image;
    }
 
    /**
@@ -615,19 +771,11 @@ public class NanoWeather {
     * @param image identifies the image this field exists within.
     * @param field specifies an identifier for this field within this image.
     */
-   public static void removeImageField(String image, String field) {
-      java.nio.file.Path path = FileSystems.getDefault().getPath(image);
-      try {
-         Files.delete(path);
-      } catch (NoSuchFileException x) {
-         System.err.format("%s: no such" + " file or directory%n", path);
-      } catch (DirectoryNotEmptyException x) {
-         System.err.format("%s not empty%n", path);
-      } catch (IOException x) {
-         // File permission problems are caught here.
-         System.err.println(x);
-      }
+   @GET
+   @Path("/removeImageField/{image}/{field}")
+   public static String removeImageField(@PathParam("image") String image, @PathParam("field") String field) {
       ImageFieldDAO.remove(image, field);
+      return "removed image field: " + field + " in " + image;
    }
 
    public static void removeTemplate(String template) {
@@ -640,8 +788,11 @@ public class NanoWeather {
     * @param template template of the template from which this field will be removed.
     * @param field name of the field which will be removed.
     */
-   public static void removeTemplateField(String template, String field) {
+   @GET
+   @Path("/removetemplatefield/{template}/{Field}")
+   public static String removeTemplateField(@PathParam("template") String template, @PathParam("field") String field) {
       TemplateFieldDAO.remove(template, field);
+      return "removed template field: " + field + " in " + template;
    }
 
    /**
@@ -657,7 +808,8 @@ public class NanoWeather {
    /**
     * Re-centers a template to account for drift between images of similar forms.
     *
-    * @param image The image which is to be adjusted for.
+    * @param image The image which is to be adjusted.
+    * @param template to be re-centered on the image.
     * @param x horizontal adjustment of template (+ left, - right).
     * @param y vertical adjustment of template (+ up, - down).
     */
@@ -673,7 +825,22 @@ public class NanoWeather {
     * @param x horizontal adjustment of template (+ left, - right).
     * @param y vertical adjustment of template (+ up, - down).
     */
-   public static void recenterFieldOnImage(String image, String template, int x, int y) {
-      ImageFieldDAO.recenterField(image, template, x, y);
+   public static void recenterFieldOnImage(String image, String field, int x, int y) {
+      ImageFieldDAO.recenterField(image, field, x, y);
+   }
+
+   /**
+    *
+    */
+   @GET
+   @Path("/setImageFieldHighThresh/{highThresh}")
+   public static void setImageFieldHighThresh(int highThresh) {
+      DefaultsDAO.set("imageFieldHighThresh", highThresh + "");
+   }
+
+   @GET
+   @Path("/setImageFieldLowThresh/{lowThresh}")
+   public static void setImageFieldLowThresh(int lowThresh) {
+      DefaultsDAO.set("imageFieldLowThresh", lowThresh + "");
    }
 }

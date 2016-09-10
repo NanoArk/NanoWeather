@@ -1,4 +1,5 @@
 package com.nanoark.utilities;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.logging.ConsoleHandler;
@@ -100,8 +101,7 @@ public class Log {
          // Add requested file handlers and find age of oldest log file.
          long oldest = new File(logFolder).lastModified();
          for (LogFile logFile : logFiles) {
-            FileHandler fh = new FileHandler(file + logFile.name, logFile.size, logFile.count,
-               logFile.append);
+            FileHandler fh = new FileHandler(file + logFile.name, logFile.size, logFile.count, logFile.append);
             fh.setFormatter(new SimpleFormatter());
             fh.setLevel(logFile.level);
             mainLogger.addHandler(fh);

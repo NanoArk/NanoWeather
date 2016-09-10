@@ -23,10 +23,11 @@ public class TemplateFieldDAO {
       BasicDBObject set = new BasicDBObject("charSet", charSet);
       BasicDBObject update = new BasicDBObject("$set", set);
       dao.update(query, update, false, true);
+      log.info("Updated template field charSet:" + template + "-" + field + "-" + charSet);
    }
 
-   public static void insert(String template, String field, int x, int y, int height, int width,
-      int highThresh, int lowThresh) {
+   public static void insert(String template, String field, int x, int y, int height, int width, int highThresh,
+      int lowThresh) {
       BasicDBObject query = new BasicDBObject("_id", template + "-" + field);
       query.append("template", template);
       query.append("field", field);
@@ -37,10 +38,11 @@ public class TemplateFieldDAO {
       query.append("highThresh", highThresh);
       query.append("lowThresh", lowThresh);
       dao.save(query, WriteConcern.JOURNALED);
+      log.info("Saved provided template data for " + template + "-" + field);
    }
 
-   public static void insert(String template, String field, int x, int y, int height, int width,
-      int highThresh, int lowThresh, String charSet) {
+   public static void insert(String template, String field, int x, int y, int height, int width, int highThresh,
+      int lowThresh, String charSet) {
       BasicDBObject query = new BasicDBObject("_id", template + "-" + field);
       query.append("template", template);
       query.append("field", field);
@@ -52,6 +54,7 @@ public class TemplateFieldDAO {
       query.append("lowThresh", lowThresh);
       query.append("charSet", charSet);
       dao.save(query, WriteConcern.JOURNALED);
+      log.info("Saved provided template data (with charset) for " + template + "-" + field);
    }
 
    public static String getVal(String template, String field, String key) {
@@ -65,6 +68,7 @@ public class TemplateFieldDAO {
       BasicDBObject set = new BasicDBObject(key, val);
       BasicDBObject update = new BasicDBObject("$set", set);
       dao.update(query, update, false, false, WriteConcern.JOURNALED);
+      log.info("Ran setVal(template field) update: " + template + "-" + field + "-" + key + "-" + val);
    }
 
    public static LinkedList<String> getFields(String template) {
@@ -82,5 +86,6 @@ public class TemplateFieldDAO {
    public static void remove(String template, String field) {
       BasicDBObject query = new BasicDBObject("_id", template + "-" + field);
       dao.remove(query, WriteConcern.JOURNALED);
+      log.info("Removed template: " + template + "-" + field);
    }
 }

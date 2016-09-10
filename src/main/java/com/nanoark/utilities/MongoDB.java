@@ -1,4 +1,5 @@
 package com.nanoark.utilities;
+
 import java.net.UnknownHostException;
 import java.util.logging.Logger;
 

@@ -1,8 +1,8 @@
 package com.nanoark.dao;
 
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.util.logging.Logger;
 
 import javax.imageio.ImageIO;
@@ -28,31 +28,27 @@ public class ImageDAO {
     *
     * @param name specifies an identifier for this image.
     * @param location specify the exact file location of this image.
-    * @param height image height in pixels.
-    * @param width image width in pixels.
+    * @throws IOException
     */
-   public static String insert(String name, String location, int height, int width) {
-      String reply = "IOException see server for error details.";
-      try {
-         BufferedImage imgBuf = ImageIO.read(new File(location));
-         int imgH = imgBuf.getHeight();
-         int imgW = imgBuf.getWidth();
-         if(height != imgH || width != imgW) {
-            reply = "Invalid width/height, provided: " + height + "x" + width + " measured: " + imgH + "x" + imgW;
-            log.warning(reply);
-         } else {
-            BasicDBObject insert = new BasicDBObject("_id", name);
-            insert.append("location", location);
-            insert.append("height", height);
-            insert.append("width", width);
-            dao.save(insert, WriteConcern.JOURNALED);
-            reply = "Added " + height + "x" + width + " image: " + name + " from " + location;
-            log.info(reply);
-         }
-      } catch (IOException e) {
-         log.severe(Log.getError(e));
+   public static void insert(String name, String location) throws Exception {
+      BufferedImage imgBuf = ImageIO.read(new URL(location));
+      int imgH = imgBuf.getHeight();
+      int imgW = imgBuf.getWidth();
+      BasicDBObject insert = new BasicDBObject("_id", name);
+      insert.append("location", location);
+      insert.append("height", imgH);
+      insert.append("width", imgW);
+      dao.save(insert, WriteConcern.JOURNALED);
+      log.info("Saved provided data for " + name);
+   }
+
+   public static String getFileExtension(String filepath) {
+      String ext = "";
+      int i = filepath.lastIndexOf('.');
+      if(i > 0) {
+         ext = filepath.substring(i);
       }
-      return reply;
+      return ext;
    }
 
    public static DBObject getImage(String image) {
@@ -72,10 +68,12 @@ public class ImageDAO {
       BasicDBObject set = new BasicDBObject(key, val);
       BasicDBObject update = new BasicDBObject("$set", set);
       dao.update(query, update, false, false, WriteConcern.JOURNALED);
+      log.info("Ran setVal(image) update: " + image + "-" + key + "-" + val);
    }
 
    public static void remove(String image) {
       BasicDBObject remove = new BasicDBObject("_id", image);
       dao.remove(remove);
+      log.info("Removed: " + image);
    }
 }

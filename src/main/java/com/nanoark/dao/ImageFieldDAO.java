@@ -1,15 +1,18 @@
 package com.nanoark.dao;
 
+import java.io.IOException;
 import java.util.LinkedList;
+import java.util.logging.Logger;
 
+import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.WriteConcern;
-import com.nanoark.utilities.FileActions;
+import com.nanoark.utilities.Log;
 import com.nanoark.utilities.MongoDB;
-import com.nanoark.utilities.TesseractJava;
+import com.nanoark.utilities.RunOCR;
 
 /**
  * Represents database collection where image fields are stored.
@@ -19,6 +22,7 @@ import com.nanoark.utilities.TesseractJava;
 public class ImageFieldDAO {
    /** Data access object connecting to the ImageField collection. */
    private static DBCollection dao = MongoDB.getCollection("imageField");
+   private static Logger       log = Log.logger();
 
    /**
     * Adds a field to an image within NanoWeather.
@@ -31,14 +35,11 @@ public class ImageFieldDAO {
     * @param width field width in pixels.
     * @param highThresh confidence above which this field is considered high accuracy.
     * @param lowThresh confidence below which this field is considered low accuracy.
+    * @throws IOException
     */
-   public static void insert(String image, String field, int x, int y, int height, int width,
-      int highThresh, int lowThresh) {
+   public static void insert(String image, String field, int x, int y, int height, int width, int highThresh,
+      int lowThresh) throws IOException {
       String location = ImageDAO.getVal(image, "location");
-      String newFieldLoc = location + field + ".png";
-      FileActions.getSubImage(location, newFieldLoc, x, y, width, height);
-      String ocrVal = TesseractJava.ocrAndPrint(newFieldLoc);
-      int confidence = TesseractJava.ocrAndConf(newFieldLoc);
       BasicDBObject query = new BasicDBObject("_id", image + "-" + field);
       query.append("image", image);
       query.append("field", field);
@@ -48,13 +49,15 @@ public class ImageFieldDAO {
       query.append("width", width);
       query.append("highThresh", highThresh);
       query.append("lowThresh", lowThresh);
-      query.append("ocrVal", ocrVal);
-      query.append("confidence", confidence);
       dao.save(query, WriteConcern.JOURNALED);
+      log.info("Saved provided data for " + image + "-" + field);
+      new RunOCR(image, field, location, x, y, width, height).start();
+      log.info("Kicked OCR thread for " + image + "-" + field);
    }
 
-   public static void insert(String image, String field, int x, int y, int height, int width,
-      int highThresh, int lowThresh, int charSet) {
+   public static void insert(String image, String field, int x, int y, int height, int width, int highThresh,
+      int lowThresh, int charSet) {
+      String location = ImageDAO.getVal(image, "location");
       BasicDBObject query = new BasicDBObject("_id", image + "-" + field);
       query.append("image", image);
       query.append("field", field);
@@ -66,6 +69,9 @@ public class ImageFieldDAO {
       query.append("lowThresh", lowThresh);
       query.append("charSet", charSet);
       dao.save(query, WriteConcern.JOURNALED);
+      log.info("Saved provided data (with charset) for " + image + "-" + field);
+      new RunOCR(image, field, location, x, y, width, height).start();
+      log.info("Kicked OCR thread (with charset) for " + image + "-" + field);
    }
 
    public static DBObject getImageField(String image, String field) {
@@ -86,6 +92,7 @@ public class ImageFieldDAO {
       BasicDBObject set = new BasicDBObject(key, val);
       BasicDBObject update = new BasicDBObject("$set", set);
       dao.update(query, update, false, false, WriteConcern.JOURNALED);
+      log.info("Ran setVal(field) update: " + image + "-" + field + "-" + key + "-" + val);
    }
 
    public static LinkedList<String> getFields(String image) {
@@ -155,6 +162,7 @@ public class ImageFieldDAO {
    public static void remove(String image, String field) {
       BasicDBObject query = new BasicDBObject("_id", image + "-" + field);
       dao.remove(query, WriteConcern.JOURNALED);
+      log.info("Removed: " + image + "-" + field);
    }
 
    public static void applyTemplate(String template) {
@@ -167,5 +175,39 @@ public class ImageFieldDAO {
 
    public static void recenterTemplate(String image, String template, int x, int y) {
       // TODO Auto-generated method stub
+   }
+
+   public static String isOCRed(String image) {
+      BasicDBObject query = new BasicDBObject("image", image);
+      BasicDBObject isNull = new BasicDBObject("ocrVal", new BasicDBObject("$exists", false));
+      BasicDBObject isEmpty = new BasicDBObject("ocrVal", "");
+      BasicDBList or = new BasicDBList();
+      or.add(isNull);
+      or.add(isEmpty);
+      long total = dao.count(query);
+      query.append("$or", or);
+      long notOCRed = dao.count(query);
+      long done = 0;
+      if(total > 0) {
+         done = (total - notOCRed) / total;
+      }
+      return done + "";
+   }
+
+   public static String isOCRed(String image, String field) {
+      BasicDBObject query = new BasicDBObject("_id", image + "-" + field);
+      BasicDBObject isNull = new BasicDBObject("ocrVal", new BasicDBObject("$exists", false));
+      BasicDBObject isEmpty = new BasicDBObject("ocrVal", "");
+      BasicDBList or = new BasicDBList();
+      or.add(isNull);
+      or.add(isEmpty);
+      long total = dao.count(query);
+      query.append("$or", or);
+      long notOCRed = dao.count(query);
+      long done = 0;
+      if(total > 0) {
+         done = (total - notOCRed) / total;
+      }
+      return done + "";
    }
 }

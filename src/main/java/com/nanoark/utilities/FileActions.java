@@ -3,6 +3,7 @@ package com.nanoark.utilities;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.util.logging.Logger;
 
 import javax.imageio.ImageIO;
@@ -14,7 +15,6 @@ import javax.imageio.ImageIO;
  */
 public class FileActions {
    private static Logger log = Log.logger();
-
    /**
     * Copies out a sub image from a file.
     *
@@ -24,12 +24,13 @@ public class FileActions {
     * @param y distance from top edge of file.
     * @param width horizontal size of sub image in pixels.
     * @param height vertical size of sub image in pixels.
+    * @throws IOException
     * @since 2016/05/18 Vino Sugunan - Extacted code by Alex in NanoWeather for generic use.
     */
-   public static void getSubImage(String from, String to, int x, int y, int width, int height) {
+   public static void getSubImage(String from, String to, int x, int y, int width, int height) throws IOException {
       Boolean fail = false;
       try {
-         BufferedImage fromBuf = ImageIO.read(new File(from));
+         BufferedImage fromBuf = ImageIO.read(new URL(from));
          int maxWidth = fromBuf.getWidth();
          int maxHeight = fromBuf.getHeight();
          if(x > maxWidth) {
@@ -57,11 +58,15 @@ public class FileActions {
             message += "\n\tWidth:  " + width;
             message += "\n\tHeight: " + height;
             log.warning(message);
+            throw new IOException("Field dimensions exceed image boundary");
          }
          BufferedImage out = fromBuf.getSubimage(x, y, width, height);
          ImageIO.write(out, "png", new File(to));
+         prepforOCR.prep(to);
+         log.info("image prepped");
       } catch (IOException e) {
          log.severe(Log.getError(e));
+         throw e;
       }
    }
 
